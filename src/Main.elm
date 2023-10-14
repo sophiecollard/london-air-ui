@@ -1,8 +1,9 @@
 module Main exposing (..)
 
 import Browser
-import Html exposing (Html, div, h1, li, p, text, ul)
-import Html.Attributes exposing (class)
+import Html exposing (Html, a, div, h1, i, li, p, span, text, ul)
+import Html.Attributes exposing (class, href, style, target)
+import Html.Events exposing (onClick)
 import Http
 import Json.Decode exposing (Decoder, andThen, field, oneOf)
 
@@ -24,7 +25,13 @@ main =
 -- Model & init
 
 
-type Model
+type alias Model =
+    { species : SpeciesCode
+    , data : Data
+    }
+
+
+type Data
     = Loading
     | Loaded DailyAirQualityData
     | Error String
@@ -32,7 +39,7 @@ type Model
 
 init : () -> ( Model, Cmd Msg )
 init _ =
-    ( Loading, getDailyAirQualityData )
+    ( Model NO2 Loading, getDailyAirQualityData )
 
 
 type alias DailyAirQualityData =
@@ -160,6 +167,28 @@ allSpeciesCode =
     [ CO, NO2, O3, PM10, PM25, SO2 ]
 
 
+speciesCodeToString : SpeciesCode -> String
+speciesCodeToString code =
+    case code of
+        CO ->
+            "Carbon Monoxide (CO)"
+
+        NO2 ->
+            "Nitrogen Dioxide (NO2)"
+
+        O3 ->
+            "Ozone (O3)"
+
+        PM10 ->
+            "PM10 Particulate"
+
+        PM25 ->
+            "PM2.5 Particulate"
+
+        SO2 ->
+            "Sulphur Dioxide (SO2)"
+
+
 speciesCodeDecoder : Decoder SpeciesCode
 speciesCodeDecoder =
     let
@@ -204,45 +233,49 @@ floatAsStringDecoder str =
 
 
 type Msg
-    = GetDailyAirQualityData
+    = SelectSpecies SpeciesCode
+    | GetDailyAirQualityData
     | GotDailyAirQualityData (Result Http.Error DailyAirQualityData)
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
+        SelectSpecies speciesCode ->
+            ( { model | species = speciesCode }, Cmd.none )
+
         GetDailyAirQualityData ->
             ( model, getDailyAirQualityData )
 
         GotDailyAirQualityData result ->
             case result of
                 Ok dailyAirQualityData ->
-                    ( Loaded dailyAirQualityData
+                    ( { model | data = Loaded dailyAirQualityData }
                     , Cmd.none
                     )
 
                 Err (Http.BadBody bodyError) ->
-                    ( Error ("Encountered bad body error: " ++ bodyError)
+                    ( { model | data = Error ("Encountered bad body error: " ++ bodyError) }
                     , Cmd.none
                     )
 
                 Err (Http.BadStatus status) ->
-                    ( Error ("Encountered bad status error: " ++ String.fromInt status)
+                    ( { model | data = Error ("Encountered bad status error: " ++ String.fromInt status) }
                     , Cmd.none
                     )
 
                 Err (Http.BadUrl url) ->
-                    ( Error ("Encountered bad URL error: " ++ url)
+                    ( { model | data = Error ("Encountered bad URL error: " ++ url) }
                     , Cmd.none
                     )
 
                 Err Http.NetworkError ->
-                    ( Error "Encountered network error"
+                    ( { model | data = Error "Encountered network error" }
                     , Cmd.none
                     )
 
                 Err Http.Timeout ->
-                    ( Error "Encountered timeout error"
+                    ( { model | data = Error "Encountered timeout error" }
                     , Cmd.none
                     )
 
@@ -277,7 +310,7 @@ view : Model -> Html Msg
 view model =
     let
         contents =
-            case model of
+            case model.data of
                 Loading ->
                     p [] [ text "Loading data" ]
 
@@ -290,9 +323,67 @@ view model =
                 Error msg ->
                     p [] [ text msg ]
     in
-    div [ class "container" ]
-        [ div [ class "content" ]
-            [ h1 [ class "title is-1" ] [ text "London Air Quality" ]
-            , contents
+    div []
+        [ viewHeader model
+        , div [ class "container" ]
+            [ div [ class "content" ]
+                [ contents
+                ]
             ]
         ]
+
+
+viewHeader : Model -> Html Msg
+viewHeader model =
+    div [ class "hero is-small" ]
+        [ div [ class "hero-body" ]
+            [ div [ class "navbar" ]
+                [ div [ class "navbar-brand" ]
+                    [ div [ class "navbar-item" ]
+                        [ h1 [ class "title is-3", style "text-shadow" "2px 2px #b2d3c2" ] [ text "London Air UI" ]
+                        ]
+                    ]
+                , div [ class "navbar-menu" ]
+                    [ div [ class "navbar-start" ]
+                        [ div [ class "navbar-item has-dropdown is-hoverable" ]
+                            [ div [ class "navbar-link" ]
+                                [ text (speciesCodeToString model.species) ]
+                            , div [ class "navbar-dropdown" ]
+                                (List.map (viewDropdownItem model) allSpeciesCode)
+                            ]
+                        ]
+                    , div [ class "navbar-end" ]
+                        [ div [ class "navbar-item" ]
+                            [ a
+                                [ class "button has-text-weight-semibold"
+                                , href "https://www.londonair.org.uk/LondonAir/API/"
+                                , target "_blank"
+                                ]
+                                [ span [ class "icon" ] [ i [ class "fa-solid fa-server" ] [] ]
+                                , span [] [ text "London Air API" ]
+                                ]
+                            ]
+                        , div [ class "navbar-item" ]
+                            [ a
+                                [ class "button is-success has-text-weight-semibold"
+                                , href "https://github.com/sophiecollard/london-air-ui"
+                                , target "_blank"
+                                ]
+                                [ span [ class "icon" ] [ i [ class "fab fa-github" ] [] ]
+                                , span [] [ text "View on GitHub" ]
+                                ]
+                            ]
+                        ]
+                    ]
+                ]
+            ]
+        ]
+
+
+viewDropdownItem : Model -> SpeciesCode -> Html Msg
+viewDropdownItem model code =
+    if model.species == code then
+        div [ class "navbar-item has-text-weight-semibold" ] [ text (speciesCodeToString code) ]
+
+    else
+        a [ class "navbar-item", onClick (SelectSpecies code) ] [ text (speciesCodeToString code) ]
