@@ -35,6 +35,16 @@
         var app = Elm.Main.init({
           node: document.getElementById("app")
         });
+
+        // Leaflet setup
+        const map = L.map('map');
+        map.zoomControl.setPosition('topright');
+        map.setView([51.505, -0.09], 12);
+
+        L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          maxZoom: 19,
+          attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+        }).addTo(map);
       })();
     </script>
   </body>

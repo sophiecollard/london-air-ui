@@ -2,7 +2,7 @@ module Main exposing (..)
 
 import Browser
 import Html exposing (Html, a, div, h1, i, li, p, span, text, ul)
-import Html.Attributes exposing (class, href, style, target)
+import Html.Attributes exposing (class, href, id, style, target)
 import Html.Events exposing (onClick)
 import Http
 import Json.Decode exposing (Decoder, andThen, field, oneOf)
@@ -325,6 +325,7 @@ view model =
     in
     div []
         [ viewHeader model
+        , div [ id "map", style "min-height" "90vh", style "z-index" "0" ] []
         , div [ class "container" ]
             [ div [ class "content" ]
                 [ contents
