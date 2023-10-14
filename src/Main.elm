@@ -108,8 +108,8 @@ siteDecoder =
 
 type alias Species =
     { code : SpeciesCode
-    , airQualityIndex : AirQualityIndex
-    , airQualityBand : String
+    , airQualityIndex : String
+    , airQualityBand : AirQualityBand
     , source : String
     }
 
@@ -118,20 +118,20 @@ speciesDecoder : Decoder Species
 speciesDecoder =
     Json.Decode.map4 Species
         (field "@SpeciesCode" speciesCodeDecoder)
-        (field "@AirQualityIndex" airQualityIndexDecoder)
-        (field "@AirQualityBand" Json.Decode.string)
+        (field "@AirQualityIndex" Json.Decode.string)
+        (field "@AirQualityBand" airQualityBandDecoder)
         (field "@IndexSource" Json.Decode.string)
 
 
-type AirQualityIndex
+type AirQualityBand
     = Low
     | Moderate
     | High
     | VeryHigh
 
 
-airQualityIndexDecoder : Decoder AirQualityIndex
-airQualityIndexDecoder =
+airQualityBandDecoder : Decoder AirQualityBand
+airQualityBandDecoder =
     let
         fromString str =
             case str of
