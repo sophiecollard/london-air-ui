@@ -341,7 +341,7 @@ viewHeader model =
             [ div [ class "navbar" ]
                 [ div [ class "navbar-brand" ]
                     [ div [ class "navbar-item" ]
-                        [ h1 [ class "title is-3", style "text-shadow" "2px 2px #b2d3c2" ] [ text "London Air UI" ]
+                        [ h1 [ class "title is-3", style "text-shadow" "2px 2px #b2d3c2" ] [ text "London Air" ]
                         ]
                     ]
                 , div [ class "navbar-menu" ]
