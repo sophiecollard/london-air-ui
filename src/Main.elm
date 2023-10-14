@@ -1,7 +1,7 @@
 module Main exposing (..)
 
 import Browser
-import Html exposing (Html, a, div, h1, i, li, p, span, text, ul)
+import Html exposing (Html, a, div, h1, i, span, text)
 import Html.Attributes exposing (class, href, id, style, target)
 import Html.Events exposing (onClick)
 import Http
@@ -445,29 +445,9 @@ subscriptions _ =
 
 view : Model -> Html Msg
 view model =
-    let
-        contents =
-            case model.data of
-                Loading ->
-                    p [] [ text "Loading data" ]
-
-                Loaded dailyAirQualityData ->
-                    div []
-                        [ p [] [ text ("Got daily air quality index for " ++ dailyAirQualityData.groupName ++ ", with locales:") ]
-                        , ul [] (List.map (\locale -> li [] [ text locale.name ]) dailyAirQualityData.localAuthority)
-                        ]
-
-                Error msg ->
-                    p [] [ text msg ]
-    in
     div []
         [ viewHeader model
         , div [ id "map", style "min-height" "90vh", style "z-index" "0" ] []
-        , div [ class "container" ]
-            [ div [ class "content" ]
-                [ contents
-                ]
-            ]
         ]
 
 
