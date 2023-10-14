@@ -19,11 +19,6 @@
       integrity="sha256-WBkoXOwTeyKclOHuWtc+i2uENFpDZ9YPdf5Hf+D7ewM="
       crossorigin=""></script>
 
-    <!-- Leaflet marker cluster plugin -->
-    <link rel="stylesheet" href="leaflet/markercluster/1.5.3/MarkerCluster.css"/>
-    <link rel="stylesheet" href="leaflet/markercluster/1.5.3/MarkerCluster.Default.css"/>
-    <script src="leaflet/markercluster/1.5.3/leaflet.markercluster.js"></script>
-
     <!-- Import app code -->
     <script src="elm.js"></script>
   </head>
@@ -45,6 +40,44 @@
           maxZoom: 19,
           attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>'
         }).addTo(map);
+
+        app.ports.resetMarkers.subscribe(resetMarkers);
+
+        var markersLayers = [];
+
+        function resetMarkers(markersData) {
+          // Clear all previous markers
+          markersLayers.forEach(l => { map.removeLayer(l) })
+
+          // Add markers to the map
+          markersData.forEach(m => {
+            const marker = getMarker(m);
+            marker.addTo(map);
+            markersLayers.push(marker);
+          })
+        }
+
+        function getMarker(data) {
+          const popup = L.popup().setContent(data.popupContents);
+          const marker = L.marker([data.lat, data.lng], {
+            icon: getIcon(data.iconUrl),
+            title: data.title,
+            riseOnHover: true
+          }).bindPopup(popup);
+          return marker;
+        }
+
+        function getIcon(iconUrl) {
+          const icon = new L.Icon({
+            iconUrl: iconUrl,
+            shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+            iconSize: [25, 41],
+            iconAnchor: [12, 41],
+            popupAnchor: [1, -34],
+            shadowSize: [41, 41]
+          });
+          return icon;
+        }
       })();
     </script>
   </body>

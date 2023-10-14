@@ -1,6 +1,8 @@
 # London Air UI
 
-A user interface for viewing data from [London Air](https://www.londonair.org.uk/LondonAir/Default.aspx), built with [Elm](https://elm-lang.org/) 0.19.1 and [Leaflet JS](https://leafletjs.com/).
+A user interface for viewing air quality data from [London Air](https://www.londonair.org.uk/LondonAir/Default.aspx), built with [Elm](https://elm-lang.org/) 0.19.1 and [Leaflet JS](https://leafletjs.com/).
+
+![Screenshot](screenshot.png)
 
 ## Build
 

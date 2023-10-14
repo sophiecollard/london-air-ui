@@ -1,11 +1,14 @@
 module Main exposing (..)
 
 import Browser
-import Html exposing (Html, a, div, h1, i, li, p, span, text, ul)
+import Html exposing (Html, a, div, h1, i, span, text)
 import Html.Attributes exposing (class, href, id, style, target)
 import Html.Events exposing (onClick)
 import Http
 import Json.Decode exposing (Decoder, andThen, field, oneOf)
+import Json.Encode
+import Leaflet
+import Utils.List
 
 
 
@@ -31,15 +34,15 @@ type alias Model =
     }
 
 
+init : () -> ( Model, Cmd Msg )
+init _ =
+    ( Model NO2 Loading, getDailyAirQualityData )
+
+
 type Data
     = Loading
     | Loaded DailyAirQualityData
     | Error String
-
-
-init : () -> ( Model, Cmd Msg )
-init _ =
-    ( Model NO2 Loading, getDailyAirQualityData )
 
 
 type alias DailyAirQualityData =
@@ -128,6 +131,22 @@ type AirQualityBand
     | Moderate
     | High
     | VeryHigh
+
+
+airQualityBandToString : AirQualityBand -> String
+airQualityBandToString band =
+    case band of
+        Low ->
+            "Low"
+
+        Moderate ->
+            "Moderate"
+
+        High ->
+            "High"
+
+        VeryHigh ->
+            "Very High"
 
 
 airQualityBandDecoder : Decoder AirQualityBand
@@ -228,6 +247,103 @@ floatAsStringDecoder str =
             Json.Decode.fail ("Failed to decode float from " ++ str)
 
 
+type alias Marker =
+    { lat : Float
+    , lng : Float
+    , color : MarkerColor
+    , tooltip : String
+    , popupContents : String
+    }
+
+
+markersFromData : DailyAirQualityData -> SpeciesCode -> List Marker
+markersFromData data code =
+    data.localAuthority
+        |> Utils.List.flatMap .site
+        |> Utils.List.flatMap (\site -> List.map (\s -> ( site, s )) site.species)
+        |> List.filter (\( _, species ) -> species.code == code)
+        |> List.map markerForSiteSpecies
+
+
+markerForSiteSpecies : ( Site, Species ) -> Marker
+markerForSiteSpecies ( site, species ) =
+    let
+        popupContents =
+            "<div class=\"content\">"
+                ++ "<h1 class=\"title is-6\">"
+                ++ site.name
+                ++ "</h1>"
+                ++ "<h2 class=\"subtitle is-7 has-text-weight-normal\">"
+                ++ speciesCodeToString species.code
+                ++ "</h2>"
+                ++ "<ul>"
+                ++ "<li>Air quality index: "
+                ++ species.airQualityIndex
+                ++ "</li>"
+                ++ "<li>Air quality band: "
+                ++ airQualityBandToString species.airQualityBand
+                ++ "</li>"
+                ++ "</ul>"
+                ++ "</div>"
+    in
+    { lat = site.lat
+    , lng = site.lng
+    , color = colorFromAirQualityBand species.airQualityBand
+    , tooltip = site.name
+    , popupContents = popupContents
+    }
+
+
+markerEncoder : Marker -> Json.Encode.Value
+markerEncoder marker =
+    Json.Encode.object
+        [ ( "lat", Json.Encode.float marker.lat )
+        , ( "lng", Json.Encode.float marker.lng )
+        , ( "iconUrl", iconUrlEncoder marker.color )
+        , ( "title", Json.Encode.string marker.tooltip )
+        , ( "popupContents", Json.Encode.string marker.popupContents )
+        ]
+
+
+type MarkerColor
+    = Green
+    | Yellow
+    | Orange
+    | Red
+
+
+colorFromAirQualityBand : AirQualityBand -> MarkerColor
+colorFromAirQualityBand band =
+    case band of
+        Low ->
+            Green
+
+        Moderate ->
+            Yellow
+
+        High ->
+            Orange
+
+        VeryHigh ->
+            Red
+
+
+iconUrlEncoder : MarkerColor -> Json.Encode.Value
+iconUrlEncoder markerColor =
+    case markerColor of
+        Green ->
+            Json.Encode.string "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png"
+
+        Yellow ->
+            Json.Encode.string "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-gold.png"
+
+        Orange ->
+            Json.Encode.string "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-orange.png"
+
+        Red ->
+            Json.Encode.string "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png"
+
+
 
 -- Msg & update
 
@@ -241,8 +357,12 @@ type Msg
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
-        SelectSpecies speciesCode ->
-            ( { model | species = speciesCode }, Cmd.none )
+        SelectSpecies species ->
+            let
+                newModel =
+                    { model | species = species }
+            in
+            ( newModel, updateMarkers newModel )
 
         GetDailyAirQualityData ->
             ( model, getDailyAirQualityData )
@@ -250,9 +370,11 @@ update msg model =
         GotDailyAirQualityData result ->
             case result of
                 Ok dailyAirQualityData ->
-                    ( { model | data = Loaded dailyAirQualityData }
-                    , Cmd.none
-                    )
+                    let
+                        newModel =
+                            { model | data = Loaded dailyAirQualityData }
+                    in
+                    ( newModel, updateMarkers newModel )
 
                 Err (Http.BadBody bodyError) ->
                     ( { model | data = Error ("Encountered bad body error: " ++ bodyError) }
@@ -293,6 +415,21 @@ dailyAirQualityDataUrl =
     "https://api.erg.ic.ac.uk/AirQuality/Daily/MonitoringIndex/Latest/GroupName=London/Json"
 
 
+updateMarkers : Model -> Cmd msg
+updateMarkers model =
+    let
+        markers =
+            case model.data of
+                Loaded data ->
+                    markersFromData data model.species
+
+                _ ->
+                    []
+    in
+    Json.Encode.list markerEncoder markers
+        |> Leaflet.resetMarkers
+
+
 
 -- Subscriptions
 
@@ -308,29 +445,9 @@ subscriptions _ =
 
 view : Model -> Html Msg
 view model =
-    let
-        contents =
-            case model.data of
-                Loading ->
-                    p [] [ text "Loading data" ]
-
-                Loaded dailyAirQualityData ->
-                    div []
-                        [ p [] [ text ("Got daily air quality index for " ++ dailyAirQualityData.groupName ++ ", with locales:") ]
-                        , ul [] (List.map (\locale -> li [] [ text locale.name ]) dailyAirQualityData.localAuthority)
-                        ]
-
-                Error msg ->
-                    p [] [ text msg ]
-    in
     div []
         [ viewHeader model
         , div [ id "map", style "min-height" "90vh", style "z-index" "0" ] []
-        , div [ class "container" ]
-            [ div [ class "content" ]
-                [ contents
-                ]
-            ]
         ]
 
 
