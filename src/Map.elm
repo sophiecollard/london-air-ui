@@ -1,7 +1,9 @@
 module Map exposing (..)
 
+import Http
 import Json.Decode exposing (Decoder, andThen, field, oneOf)
 import Json.Encode
+import Leaflet
 import Utils.List
 
 
@@ -14,10 +16,11 @@ type alias MapModel =
     }
 
 
-initMap : MapModel
-initMap =
-    { data = Loading
-    }
+initMap : SpeciesCode -> ( MapModel, Cmd MapMsg )
+initMap speciesCode =
+    ( { data = Loading }
+    , getDailyAirQualityData speciesCode
+    )
 
 
 type Data
@@ -323,3 +326,88 @@ iconUrlEncoder markerColor =
 
         Black ->
             Json.Encode.string "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-black.png"
+
+
+
+-- Msg & update
+
+
+type MapMsg
+    = GetDailyAirQualityData SpeciesCode
+    | GotDailyAirQualityData SpeciesCode (Result Http.Error DailyAirQualityData)
+    | UpdateMarkers SpeciesCode
+
+
+updateMap : MapMsg -> MapModel -> ( MapModel, Cmd MapMsg )
+updateMap msg map =
+    case msg of
+        GetDailyAirQualityData speciesCode ->
+            ( map, getDailyAirQualityData speciesCode )
+
+        GotDailyAirQualityData speciesCode result ->
+            case result of
+                Ok dailyAirQualityData ->
+                    let
+                        newMap =
+                            { map | data = Loaded dailyAirQualityData }
+                    in
+                    ( newMap, updateMarkers newMap speciesCode )
+
+                Err (Http.BadBody bodyError) ->
+                    ( { map | data = Error ("Encountered bad body error: " ++ bodyError) }
+                    , Cmd.none
+                    )
+
+                Err (Http.BadStatus status) ->
+                    ( { map | data = Error ("Encountered bad status error: " ++ String.fromInt status) }
+                    , Cmd.none
+                    )
+
+                Err (Http.BadUrl url) ->
+                    ( { map | data = Error ("Encountered bad URL error: " ++ url) }
+                    , Cmd.none
+                    )
+
+                Err Http.NetworkError ->
+                    ( { map | data = Error "Encountered network error" }
+                    , Cmd.none
+                    )
+
+                Err Http.Timeout ->
+                    ( { map | data = Error "Encountered timeout error" }
+                    , Cmd.none
+                    )
+
+        UpdateMarkers speciesCode ->
+            ( map, updateMarkers map speciesCode )
+
+
+getDailyAirQualityData : SpeciesCode -> Cmd MapMsg
+getDailyAirQualityData speciesCode =
+    -- Note that data is fetched for all species of pollutants, regardless of speciesCode which
+    -- is only passed as the first argument to GotDailyAirQualityData message to select the
+    -- species for which to display map markers.
+    Http.get
+        { url = dailyAirQualityDataUrl
+        , expect = Http.expectJson (GotDailyAirQualityData speciesCode) dailyAirQualityDataDecoder
+        }
+
+
+dailyAirQualityDataUrl : String
+dailyAirQualityDataUrl =
+    "https://api.erg.ic.ac.uk/AirQuality/Daily/MonitoringIndex/Latest/GroupName=London/Json"
+
+
+updateMarkers : MapModel -> SpeciesCode -> Cmd msg
+updateMarkers map speciesCode =
+    let
+        markers =
+            case map.data of
+                Loaded data ->
+                    markersFromData data speciesCode
+
+                _ ->
+                    []
+    in
+    Json.Encode.list markerEncoder markers
+        |> Leaflet.resetMarkers

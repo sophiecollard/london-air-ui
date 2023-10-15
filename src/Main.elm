@@ -1,13 +1,10 @@
 module Main exposing (..)
 
 import Browser
-import Header exposing (HeaderModel, initHeader)
+import Header exposing (HeaderModel, HeaderMsg(..), initHeader, updateHeader)
 import Html exposing (Html, a, div, h1, i, span, text)
 import Html.Attributes exposing (class, href, id, style, target)
 import Html.Events exposing (onClick)
-import Http
-import Json.Encode
-import Leaflet
 import Map exposing (..)
 
 
@@ -36,7 +33,14 @@ type alias Model =
 
 init : () -> ( Model, Cmd Msg )
 init _ =
-    ( { header = initHeader, map = initMap }, getDailyAirQualityData )
+    let
+        header =
+            initHeader
+
+        ( map, mapCmd ) =
+            initMap header.species
+    in
+    ( Model header map, Cmd.map MapMsg mapCmd )
 
 
 
@@ -44,92 +48,43 @@ init _ =
 
 
 type Msg
-    = SelectSpecies SpeciesCode
-    | GetDailyAirQualityData
-    | GotDailyAirQualityData (Result Http.Error DailyAirQualityData)
+    = HeaderMsg HeaderMsg
+    | MapMsg MapMsg
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
-        SelectSpecies species ->
-            let
-                header =
-                    model.header
-
-                newModel =
-                    { model | header = { header | species = species } }
-            in
-            ( newModel, updateMarkers newModel )
-
-        GetDailyAirQualityData ->
-            ( model, getDailyAirQualityData )
-
-        GotDailyAirQualityData result ->
-            let
-                map =
-                    model.map
-            in
-            case result of
-                Ok dailyAirQualityData ->
-                    let
-                        newModel =
-                            { model | map = { map | data = Loaded dailyAirQualityData } }
-                    in
-                    ( newModel, updateMarkers newModel )
-
-                Err (Http.BadBody bodyError) ->
-                    ( { model | map = { map | data = Error ("Encountered bad body error: " ++ bodyError) } }
-                    , Cmd.none
-                    )
-
-                Err (Http.BadStatus status) ->
-                    ( { model | map = { map | data = Error ("Encountered bad status error: " ++ String.fromInt status) } }
-                    , Cmd.none
-                    )
-
-                Err (Http.BadUrl url) ->
-                    ( { model | map = { map | data = Error ("Encountered bad URL error: " ++ url) } }
-                    , Cmd.none
-                    )
-
-                Err Http.NetworkError ->
-                    ( { model | map = { map | data = Error "Encountered network error" } }
-                    , Cmd.none
-                    )
-
-                Err Http.Timeout ->
-                    ( { model | map = { map | data = Error "Encountered timeout error" } }
-                    , Cmd.none
-                    )
-
-
-getDailyAirQualityData : Cmd Msg
-getDailyAirQualityData =
-    Http.get
-        { url = dailyAirQualityDataUrl
-        , expect = Http.expectJson GotDailyAirQualityData dailyAirQualityDataDecoder
-        }
-
-
-dailyAirQualityDataUrl : String
-dailyAirQualityDataUrl =
-    "https://api.erg.ic.ac.uk/AirQuality/Daily/MonitoringIndex/Latest/GroupName=London/Json"
-
-
-updateMarkers : Model -> Cmd msg
-updateMarkers model =
-    let
-        markers =
-            case model.map.data of
-                Loaded data ->
-                    markersFromData data model.header.species
+        HeaderMsg headerMsg ->
+            case headerMsg of
+                EmitMapMsg mapMsg ->
+                    handleMapMsg mapMsg model
 
                 _ ->
-                    []
+                    handleHeaderMsg headerMsg model
+
+        MapMsg mapMsg ->
+            handleMapMsg mapMsg model
+
+
+handleHeaderMsg : HeaderMsg -> Model -> ( Model, Cmd Msg )
+handleHeaderMsg headerMsg model =
+    let
+        ( header, headerCmd ) =
+            updateHeader headerMsg model.header
     in
-    Json.Encode.list markerEncoder markers
-        |> Leaflet.resetMarkers
+    ( { model | header = header }
+    , Cmd.map HeaderMsg headerCmd
+    )
+
+
+handleMapMsg : MapMsg -> Model -> ( Model, Cmd Msg )
+handleMapMsg mapMsg model =
+    let
+        ( map, mapCmd ) =
+            updateMap mapMsg model.map
+    in
+    ( { model | map = map }, Cmd.map MapMsg mapCmd )
 
 
 
@@ -169,7 +124,7 @@ viewHeader model =
                             [ div [ class "navbar-link" ]
                                 [ text (speciesCodeToString model.header.species) ]
                             , div [ class "navbar-dropdown" ]
-                                (List.map (viewDropdownItem model) allSpeciesCode)
+                                (allSpeciesCode |> List.map (viewDropdownItem model) |> List.map (Html.map HeaderMsg))
                             ]
                         ]
                     , div [ class "navbar-end" ]
@@ -200,7 +155,7 @@ viewHeader model =
         ]
 
 
-viewDropdownItem : Model -> SpeciesCode -> Html Msg
+viewDropdownItem : Model -> SpeciesCode -> Html HeaderMsg
 viewDropdownItem model code =
     if model.header.species == code then
         div [ class "navbar-item has-text-weight-semibold" ] [ text (speciesCodeToString code) ]
