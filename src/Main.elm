@@ -308,8 +308,8 @@ markerEncoder marker =
 type MarkerColor
     = Green
     | Yellow
-    | Orange
     | Red
+    | Black
 
 
 colorFromAirQualityBand : AirQualityBand -> MarkerColor
@@ -322,10 +322,10 @@ colorFromAirQualityBand band =
             Yellow
 
         High ->
-            Orange
+            Red
 
         VeryHigh ->
-            Red
+            Black
 
 
 iconUrlEncoder : MarkerColor -> Json.Encode.Value
@@ -337,11 +337,11 @@ iconUrlEncoder markerColor =
         Yellow ->
             Json.Encode.string "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-gold.png"
 
-        Orange ->
-            Json.Encode.string "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-orange.png"
-
         Red ->
             Json.Encode.string "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png"
+
+        Black ->
+            Json.Encode.string "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-black.png"
 
 
 
