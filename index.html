@@ -27,7 +27,7 @@
     <script>
       (function() {
         // Elm app setup
-        var app = Elm.Main.init({
+        const app = Elm.Main.init({
           node: document.getElementById("app")
         });
 
@@ -43,7 +43,7 @@
 
         app.ports.resetMarkers.subscribe(resetMarkers);
 
-        var markersLayers = [];
+        const markersLayers = [];
 
         function resetMarkers(markersData) {
           // Clear all previous markers
