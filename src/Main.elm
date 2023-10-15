@@ -199,10 +199,10 @@ speciesCodeToString code =
             "Ozone (O3)"
 
         PM10 ->
-            "PM10 Particulate"
+            "PM10 Particules"
 
         PM25 ->
-            "PM2.5 Particulate"
+            "PM2.5 Particules"
 
         SO2 ->
             "Sulphur Dioxide (SO2)"
