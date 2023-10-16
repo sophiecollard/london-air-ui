@@ -1,5 +1,7 @@
 module Map exposing (..)
 
+import Html exposing (Html, div)
+import Html.Attributes exposing (id, style)
 import Http
 import Json.Decode exposing (Decoder, andThen, field, oneOf)
 import Json.Encode
@@ -411,3 +413,12 @@ updateMarkers map speciesCode =
     in
     Json.Encode.list markerEncoder markers
         |> Leaflet.resetMarkers
+
+
+
+-- View
+
+
+viewMap : Html msg
+viewMap =
+    div [ id "map", style "min-height" "90vh", style "z-index" "0" ] []
