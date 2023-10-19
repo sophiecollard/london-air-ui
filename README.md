@@ -23,3 +23,6 @@ From the root directory, run:
 ```sh
 elm make src/Main.elm --output elm.js --optimize
 ```
+
+Room 3E/TP
+Zoom ID: 869 782 0000 or f046939

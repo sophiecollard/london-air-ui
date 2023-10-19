@@ -1,6 +1,7 @@
 module Main exposing (..)
 
 import Browser
+import Debug
 import Html exposing (Html, a, div, h1, i, span, text)
 import Html.Attributes exposing (class, href, id, style, target)
 import Html.Events exposing (onClick)
@@ -248,7 +249,8 @@ floatAsStringDecoder str =
 
 
 type alias Marker =
-    { lat : Float
+    { id : String
+    , lat : Float
     , lng : Float
     , color : MarkerColor
     , tooltip : String
@@ -286,7 +288,8 @@ markerForSiteSpecies ( site, species ) =
                 ++ "</ul>"
                 ++ "</div>"
     in
-    { lat = site.lat
+    { id = site.code
+    , lat = site.lat
     , lng = site.lng
     , color = colorFromAirQualityBand species.airQualityBand
     , tooltip = site.name
@@ -297,7 +300,8 @@ markerForSiteSpecies ( site, species ) =
 markerEncoder : Marker -> Json.Encode.Value
 markerEncoder marker =
     Json.Encode.object
-        [ ( "lat", Json.Encode.float marker.lat )
+        [ ( "id", Json.Encode.string marker.id)
+        , ( "lat", Json.Encode.float marker.lat )
         , ( "lng", Json.Encode.float marker.lng )
         , ( "iconUrl", iconUrlEncoder marker.color )
         , ( "title", Json.Encode.string marker.tooltip )
@@ -352,6 +356,7 @@ type Msg
     = SelectSpecies SpeciesCode
     | GetDailyAirQualityData
     | GotDailyAirQualityData (Result Http.Error DailyAirQualityData)
+    | GotMsgFromPopup String
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -400,6 +405,12 @@ update msg model =
                     ( { model | data = Error "Encountered timeout error" }
                     , Cmd.none
                     )
+        
+        GotMsgFromPopup message ->
+            let
+                _ = Debug.log "Got msg from popup: " message
+            in
+            ( model, Cmd.none )
 
 
 getDailyAirQualityData : Cmd Msg
@@ -436,7 +447,7 @@ updateMarkers model =
 
 subscriptions : Model -> Sub Msg
 subscriptions _ =
-    Sub.none
+    Leaflet.incoming GotMsgFromPopup
 
 
 
