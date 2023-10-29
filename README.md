@@ -2,6 +2,8 @@
 
 A user interface for viewing air quality data from [London Air](https://www.londonair.org.uk/LondonAir/Default.aspx), built with [Elm](https://elm-lang.org/) 0.19.1 and [Leaflet JS](https://leafletjs.com/).
 
+A live version of the app can be found at [https://london-air-ui.ams3.cdn.digitaloceanspaces.com/index.html](https://london-air-ui.ams3.cdn.digitaloceanspaces.com/index.html).
+
 ![Screenshot](screenshot.png)
 
 ## Build
