@@ -16,7 +16,19 @@ From the root directory, run:
 elm make src/Main.elm --output elm.js
 ```
 
-Then, point your favourite browser to the location of `index.html`.
+In `index.html`, replace the following tag:
+
+```html
+<script src="https://london-air-ui.ams3.cdn.digitaloceanspaces.com/elm.min.js.gz"></script>
+```
+
+with:
+
+```html
+<script src="elm.js"></script>
+```
+
+Then, point your favourite browser to the location of `index.html`. Don't forget to undo this change before releasing to production!
 
 ### Production
 
