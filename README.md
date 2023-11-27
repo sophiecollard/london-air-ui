@@ -20,8 +20,26 @@ Then, point your favourite browser to the location of `index.html`.
 
 ### Production
 
-From the root directory, run:
+From the root directory, build the application with:
 
 ```sh
 elm make src/Main.elm --output elm.js --optimize
 ```
+
+Minify the resulting `elm.js` file with:
+
+```sh
+uglifyjs elm.js -o elm.min.js
+```
+
+If running this command for the first time, you may need to install uglify with `npm install -g uglify-js`.
+
+Finally, compress the resulting `elm.min.js` file with:
+
+```sh
+gzip -k elm.min.js
+```
+
+Upload the resulting `elm.min.js.gz` to [DigitalOcean spaces](https://www.digitalocean.com/products/spaces) or similar. Don't forget to enable the CDN feature on your bucket and to configure your object metadata to include the following headers:
+  * `Content-Type: application/javascript`
+  * `Content-Encoding: gzip`
