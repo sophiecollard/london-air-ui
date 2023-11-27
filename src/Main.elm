@@ -29,14 +29,15 @@ main =
 
 
 type alias Model =
-    { species : SpeciesCode
+    { dropdownIsActive : Bool
+    , species : SpeciesCode
     , data : Data
     }
 
 
 init : () -> ( Model, Cmd Msg )
 init _ =
-    ( Model NO2 Loading, getDailyAirQualityData )
+    ( Model False NO2 Loading, getDailyAirQualityData )
 
 
 type Data
@@ -349,7 +350,8 @@ iconUrlEncoder markerColor =
 
 
 type Msg
-    = SelectSpecies SpeciesCode
+    = ToggleDropdown
+    | SelectSpecies SpeciesCode
     | GetDailyAirQualityData
     | GotDailyAirQualityData (Result Http.Error DailyAirQualityData)
 
@@ -357,6 +359,9 @@ type Msg
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
+        ToggleDropdown ->
+            ( { model | dropdownIsActive = not model.dropdownIsActive }, Cmd.none )
+
         SelectSpecies species ->
             let
                 newModel =
@@ -453,6 +458,14 @@ view model =
 
 viewHeader : Model -> Html Msg
 viewHeader model =
+    let
+        ( navbarBurgerClass, navbarMenuClass ) =
+            if model.dropdownIsActive then
+                ( "navbar-burger is-active", "navbar-menu is-active" )
+
+            else
+                ( "navbar-burger", "navbar-menu" )
+    in
     div [ class "hero is-small" ]
         [ div [ class "hero-body" ]
             [ div [ class "navbar" ]
@@ -460,8 +473,13 @@ viewHeader model =
                     [ div [ class "navbar-item" ]
                         [ h1 [ class "title is-3", style "text-shadow" "2px 2px #b2d3c2" ] [ text "London Air" ]
                         ]
+                    , a [ class navbarBurgerClass, onClick ToggleDropdown ]
+                        [ span [] []
+                        , span [] []
+                        , span [] []
+                        ]
                     ]
-                , div [ class "navbar-menu" ]
+                , div [ class navbarMenuClass ]
                     [ div [ class "navbar-start" ]
                         [ div [ class "navbar-item has-dropdown is-hoverable" ]
                             [ div [ class "navbar-link" ]
